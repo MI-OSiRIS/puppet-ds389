@@ -1,0 +1,20 @@
+# this is not used by the module, left for reference
+
+dn: cn=<%=@suffix%>,cn=mapping tree,cn=config
+changetype: add
+objectclass: top
+objectclass: extensibleObject
+objectclass: nsMappingTree
+nsslapd-state: backend
+nsslapd-backend: UserData
+cn: <%=@suffix%>
+
+dn: cn=ou=groups<%=@suffix%>,cn=mapping tree,cn=config
+changetype: add
+objectclass: top
+objectclass: extensibleObject
+objectclass: nsMappingTree
+nsslapd-state: backend
+nsslapd-backend: GroupData
+nsslapd-parent-suffix: <%=@suffix%>
+cn: ou=groups,<%=@suffix%>
