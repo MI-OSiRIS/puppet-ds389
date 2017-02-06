@@ -53,7 +53,7 @@ define ds389::site (
     command => "/usr/sbin/setup-ds-admin.pl --silent General.FullMachineName=${instance_hostname} General.SuiteSpotGroup=${suite_spot_group} General.SuiteSpotUserID=${suite_spot_user_id} slapd.InstallLdifFile=suggest slapd.RootDN=\"${root_dn}\" slapd.RootDNPwd=\"${root_dn_pass}\" slapd.SlapdConfigForMC=yes slapd.ServerIdentifier=${instance} slapd.AddOrgEntries=yes slapd.ServerPort=${server_port} slapd.Suffix=${suffix} admin.SysUser=${suite_spot_user_id} General.ConfigDirectoryAdminID=admin General.ConfigDirectoryAdminPwd=\"${root_dn_pass}\" admin.ServerAdminID=admin admin.ServerAdminPwd=\"${root_dn_pass}\" admin.ServerIpAddress=${net::backend::ip} admin.Port=9830 General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=NetscapeRoot\"",    
     require => [ Package['389-ds-base'] ],
     creates  => "${database}",
-    logoutput => true
+    logoutput => false
   } ->
 
   # required if the NSS database has a password to access
@@ -67,13 +67,13 @@ define ds389::site (
   exec { "${instance} import key and certificate":
     command => "${stop} ; /bin/pk12util -i $certfile -d ${database} -W \"$certpass\" -K \"$kspass\" ",
     unless  => [ "/bin/certutil -L -d ${database} | /bin/grep -q \"${certname}\"", "/usr/bin/test ! -f $certfile" ],
-    logoutput => true
+    logoutput => false
   } -> 
 
   exec { "${instance} import CA chain":
     command => "/bin/certutil -d ${database} -A -n $caname -t CT,, -a -i $cafile; ${start}",
     unless  => [ "/bin/certutil -d ${database} -L | /bin/grep -q \"${caname}\"" , "/usr/bin/test ! -f $cafile" ],
-    logoutput => true
+    # logoutput => true
   } ->
 
   file { "${instance} add CA cert to openldap":
@@ -104,7 +104,7 @@ define ds389::site (
       command => "/bin/cat ${database}/${ldif} |${ldapmodify} -v -x -D \"${root_dn}\" -w ${root_dn_pass} ; if [ $? -eq 0 ]; then touch ${database}/${ldif}.done; fi",
       creates => "${database}/${ldif}.done",
       notify  => Service["dirsrv@${instance}"],
-      logoutput => true
+      logoutput => false
     }
   }
 
@@ -130,7 +130,7 @@ define ds389::site (
         creates => "${database}/supplier_bind_dn.done",
         notify  => Service["dirsrv@${instance}"],
         require => Exec["${instance} setup ds"],
-        logoutput => true
+        logoutput => false
     }
 
      # generate replication agreements 
@@ -160,7 +160,7 @@ define ds389::site (
         creates => "${database}/repl_agr_${replica}.done",
         notify  => Service["dirsrv@${instance}"],
         require => [ Exec["${instance} setup ds"], Exec["${instance} ldif import replication.ldif"] ],
-        logoutput => true
+        logoutput => false
       }
     }
   }
