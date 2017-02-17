@@ -18,14 +18,16 @@ define ds389::site (
   $kspass                = '', # Keystore pass 
   $cafile                = undef, # path to ca cert to import with keycert
   $caname                = 'CA1', # identifier to use for imported CA.  No spaces, space and everything after is ignored.
-  $ldif_install          = [ 'ssl.ldif' ], # ldif files with config modifications from $template_src/filename.ldif.erb
-  $template_src          = 'ds389',  # if you over-ride this it has to contain any templates specified in ldif_install
+  $ldif_install          = [ 'ssl.ldif' ], # ldif files applied with ldapmodify from $ldif_src/filename.ldif.erb
+  $schema_install        = [ 'osiris.ldif' ], # ldif schema extensions from $schema_src/name.ldif - not templated
+  $ldif_src              = 'ds389/ldif',  # if over-ridden must contain all templates specified in ldif_install
+  $schema_src            = 'ds389/schema', # if over-ridden must contain all files specified in schema_install
   $supplier_bind_dn_pass = undef, # if left undef a supplier bind dn is not created
   $supplier_bind_dn      = 'cn=replication manager, cn=config', 
   $supplier_bind_cn      = 'replication manager', # should match cn for supplier_bind_dn
   $replica_id            = undef, # ID unique to all suppliers between 1 65536
   $replicas              = [], # replica hostnames not including this host.  If empty then no replication agreements are configured.
-  $replica_init          = false # if true, init the replica when creating replication agreement.  The recommendation in docs for multi-master startup is to init all from one master so set this false on the chosen initial master.
+  $replica_init          = false # if true, init the replica when creating replication agreement. Only one replica should have it true, and it should be the last one configured.
 ){
 
   $database           = "/etc/dirsrv/slapd-${instance}"
@@ -94,11 +96,13 @@ define ds389::site (
 
   anchor { "${instance} ds389::site::end": }
 
+###### add a tag to these so you can group the dependencies with a collector, duh!  And do it to the stuff above as well!
+
   $ldif_install.each | $ldif | {
     file { "$instance $ldif":
-      require =>  Exec["${instance} import CA chain"],
+      require => Exec["${instance} import CA chain"],
       path => "${database}/${ldif}",
-      content => template("$template_src/${ldif}.erb")
+      content => template("$ldif_src/${ldif}.erb")
     } ~>
     exec { "${instance} ldif import ${ldif}" :
       command => "/bin/cat ${database}/${ldif} |${ldapmodify} -v -x -D \"${root_dn}\" -w ${root_dn_pass} ; if [ $? -eq 0 ]; then touch ${database}/${ldif}.done; fi",
@@ -108,6 +112,27 @@ define ds389::site (
     }
   }
 
+  $schema_install.each | $schema | {
+
+    exec { "${instance}-stop-install-${schema}":
+      command => "${stop}", 
+      creates => "${database}/schema/${schema}",
+      require => Service["dirsrv@${instance}"] 
+    } ->
+
+    file { "$instance $schema":
+      notify => Service["dirsrv@${instance}"],
+      path => "${database}/schema/99${schema}",
+      content => file("$schema_src/$schema")
+
+    } ~>
+
+    exec { "${instance}-start-install-${schema}":
+      command => "${start}",
+      refreshonly => true
+    }
+
+  }
     # doing these inline because passwords are involved that I don't want to save to a file on the system
 
   if $supplier_bind_dn_pass {
