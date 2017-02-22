@@ -19,7 +19,7 @@ define ds389::site (
   $cafile                = undef, # path to ca cert to import with keycert
   $caname                = 'CA1', # identifier to use for imported CA.  No spaces, space and everything after is ignored.
   $ldif_install          = [ 'ssl.ldif' ], # ldif files applied with ldapmodify from $ldif_src/filename.ldif.erb
-  $schema_install        = [ 'osiris.ldif' ], # ldif schema extensions from $schema_src/name.ldif - not templated
+  $schema_install        = [ '65eduorg.ldif', '70osiris.ldif' ], # ldif schema extensions from $schema_src/name.ldif - not templated
   $ldif_src              = 'ds389/ldif',  # if over-ridden must contain all templates specified in ldif_install
   $schema_src            = 'ds389/schema', # if over-ridden must contain all files specified in schema_install
   $supplier_bind_dn_pass = undef, # if left undef a supplier bind dn is not created
@@ -112,6 +112,8 @@ define ds389::site (
     }
   }
 
+
+
   $schema_install.each | $schema | {
 
     exec { "${instance}-stop-install-${schema}":
@@ -121,8 +123,7 @@ define ds389::site (
     } ->
 
     file { "$instance $schema":
-      notify => Service["dirsrv@${instance}"],
-      path => "${database}/schema/99${schema}",
+      path => "${database}/schema/${schema}",
       content => file("$schema_src/$schema")
 
     } ~>

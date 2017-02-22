@@ -1,0 +1,87 @@
+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#
+# THIS SCHEMA FILE COMPILED FROM OpenLDAP FORMATTED SCHEMAS.  DO NOT HAND     #
+# EDIT THIS FILE, DOWNLOAD THE CORRESPONDING SCHEMA FILE FROM GITHUB FOLDER   #
+# https://github.com/MI-OSiRIS/aa_services/tree/master/doc/schema/ldap        #
+# MAKE YOUR EDITS, AND "COMPILE" TO "ldif" USING THE TOOL AVAILABLE AT        #
+# https://github.com/MI-OSiRIS/aa_services/blob/master/bin/os2ns.pl           #
+#                                                                             #
+# THIS FILE WAS COMPILED AT Wed Feb 22 15:03:50 2017 WITH THE INVOCATION:     #
+#                                                                             #
+# os2ns.pl eduorg.schema 65eduorg.ldif                                        #
+#                                                                             #
+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#
+#
+dn: cn=schema
+objectClass: top
+objectClass: ldapSubentry
+objectClass: subschema
+cn: schema
+#
+# eduOrg Objectclass version 1.1 (2002-10-23)
+#
+# See http://www.educause.edu/eduperson for background and usage
+#
+# 1.3.6.1.4.1.5923 is the toplevel OID for this work
+#   For a layout of the OID space, please refer to the
+#   eduPerson objectclass LDIF.
+#
+#
+# CHANGELOG
+#
+#   May 01, 2002    (gettes@georgetown.edu) Original version 1.0 experimental
+#   Oct 23, 2002    (gettes@georgetown.edu) fix typo in objectclass spec
+#                                               changed tabs to spaces
+#                                               add cn to objectclass
+#                                               No longer experimental
+#   Feb 20, 2017    (mg@wayne.edu)          reformattted as OpenLDAP schema to be
+#                                               "compiled" into LDIF with OSiRIS
+#                                               AA'S os2ns.pl utility
+#
+#
+# "eduOrg" attributes
+#
+attributeTypes: (1.3.6.1.4.1.5923.1.2.1.2
+    NAME 'eduOrgHomePageURI'
+    DESC 'eduOrg per Internet2 and EDUCAUSE'
+    EQUALITY caseExactIA5Match
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+    X-ORIGIN 'https://spaces.internet2.edu/display/macedir/Generic+eduOrg' )
+#
+attributeTypes: (1.3.6.1.4.1.5923.1.2.1.3
+    NAME 'eduOrgIdentityAuthNPolicyURI'
+    DESC 'eduOrg per Internet2 and EDUCAUSE'
+    EQUALITY caseExactIA5Match
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+    X-ORIGIN 'https://spaces.internet2.edu/display/macedir/Generic+eduOrg' )
+#
+attributeTypes: (1.3.6.1.4.1.5923.1.2.1.4
+    NAME 'eduOrgLegalName'
+    DESC 'eduOrg per Internet2 and EDUCAUSE'
+    EQUALITY caseIgnoreMatch
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+    X-ORIGIN 'https://spaces.internet2.edu/display/macedir/Generic+eduOrg' )
+#
+attributeTypes: (1.3.6.1.4.1.5923.1.2.1.5
+    NAME 'eduOrgSuperiorURI'
+    DESC 'eduOrg per Internet2 and EDUCAUSE'
+    EQUALITY caseExactIA5Match
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+    X-ORIGIN 'https://spaces.internet2.edu/display/macedir/Generic+eduOrg' )
+#
+attributeTypes: (1.3.6.1.4.1.5923.1.2.1.6
+    NAME 'eduOrgWhitePagesURI'
+    DESC 'eduOrg per Internet2 and EDUCAUSE'
+    EQUALITY caseExactIA5Match
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+    X-ORIGIN 'https://spaces.internet2.edu/display/macedir/Generic+eduOrg' )
+#
+#
+# eduOrg objectclass definition
+#
+#
+objectClasses: (1.3.6.1.4.1.5923.1.2.2
+    NAME 'eduOrg'
+    AUXILIARY
+    MAY (
+        cn $ eduOrgHomePageURI $ eduOrgIdentityAuthNPolicyURI $ eduOrgLegalName $
+        eduOrgSuperiorURI $ eduOrgWhitePagesURI ) )
