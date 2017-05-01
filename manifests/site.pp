@@ -77,17 +77,6 @@ define ds389::site (
     unless  => [ "/bin/certutil -d ${database} -L | /bin/grep -q \"${caname}\"" , "/usr/bin/test ! -f $cafile" ],
     # logoutput => true
   } ->
-
-  file { "${instance} add CA cert to openldap":
-    path => "/etc/openldap/cacerts/${instance}-ca.pem",
-    source => $cafile,
-    require => File['/etc/openldap/cacerts']
-  } ~>
-
-  exec { "${instance} rehash certs":
-    command => '/sbin/cacertdir_rehash /etc/openldap/cacerts',
-    refreshonly => true
-  } ->
   
   service { "dirsrv@${instance}":
       ensure => $ds389::service_running,
