@@ -27,4 +27,6 @@ class ds389 (
   		ensure => $snmp_service_running,
   		enable => $snmp_service_enable
   	}
+
+  	$ldapmodify         = '/usr/bin/ldapmodify'
 }

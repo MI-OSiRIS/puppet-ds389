@@ -8,6 +8,6 @@ changetype: add
 objectclass: top
 objectclass: nsEncryptionModule
 cn: RSA
-nsSSLPersonalitySSL: <%=@certname%>
+nsSSLPersonalitySSL: <%=@template_vars['certname']%>
 nsSSLToken: internal (software)
 nsSSLActivation: on

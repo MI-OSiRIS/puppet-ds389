@@ -1,5 +1,5 @@
-# Somewhat copied from ds_389 module by jlcox1970: https://github.com/jlcox1970/ds_389
-#
+# Originally parts of this were copied from ds_389 module by jlcox1970: https://github.com/jlcox1970/ds_389
+# This module is targeted at RHEL7 and makes no provision for potential differences of other distributions
 
 
 define ds389::site (
@@ -18,10 +18,9 @@ define ds389::site (
   $kspass                = '', # Keystore pass 
   $cafile                = undef, # path to ca cert to import with keycert
   $caname                = 'CA1', # identifier to use for imported CA.  No spaces, space and everything after is ignored.
-  $ldif_install          = [ 'ssl.ldif' ], # ldif files applied with ldapmodify from $ldif_src/filename.ldif.erb
-  $schema_install        = [ '65eduorg.ldif', '70osiris.ldif' ], # ldif schema extensions from $schema_src/name.ldif - not templated
-  $ldif_src              = 'ds389/ldif',  # if over-ridden must contain all templates specified in ldif_install
-  $schema_src            = 'ds389/schema', # if over-ridden must contain all files specified in schema_install
+  $enable_ssl            = true,
+  $enable_replication    = false,
+  $schema_install        = [ 'eduorg.ldif' ], # array of ldif schema extensions to install from those included with module
   $supplier_bind_dn_pass = undef, # if left undef a supplier bind dn is not created
   $supplier_bind_dn      = 'cn=replication manager, cn=config', 
   $supplier_bind_cn      = 'replication manager', # should match cn for supplier_bind_dn
@@ -33,10 +32,14 @@ define ds389::site (
   $database           = "/etc/dirsrv/slapd-${instance}"
   $stop               = "/bin/systemctl stop dirsrv@${instance}"
   $start              = "/bin/systemctl start dirsrv@${instance}"
-  $ldapmodify         = '/usr/bin/ldapmodify'
+  $ldapmodify         = $::ds389::ldapmodify
   
   unless $root_dn_pass {
     fail ("Directory Service 389 : rootDNPwd : No Password for RootDN :::${root_dn_pass}:::")
+  }
+
+  if $enable_replication and ($replica_id == undef) {
+    fail ("Enabling replication requires defining a unique replica ID for this instance between 1 and 65536")
   }
 
   # add backslash before = and ,
@@ -47,83 +50,77 @@ define ds389::site (
   if $replica_init { $start_replica = 'start' } 
   else { $start_replica = 'no' }
 
-  anchor {"${instance} ds389::site::start": } ->
-
-  exec { "${instance} setup ds":
+  exec { "${instance}-ds389-setup":
     # the second version also configures an admin server on 9830.  Could be useful to have available.  
     # command => "/usr/sbin/setup-ds.pl --silent General.FullMachineName=${instance_hostname} General.SuiteSpotGroup=${suite_spot_group} General.SuiteSpotUserID=${suite_spot_user_id} slapd.InstallLdifFile=suggest slapd.RootDN=\"${root_dn}\" slapd.RootDNPwd=\"${root_dn_pass}\" slapd.ServerIdentifier=${instance} slapd.AddOrgEntries=yes slapd.ServerPort=${server_port} slapd.Suffix=${suffix}",    
-    command => "/usr/sbin/setup-ds-admin.pl --silent General.FullMachineName=${instance_hostname} General.SuiteSpotGroup=${suite_spot_group} General.SuiteSpotUserID=${suite_spot_user_id} slapd.InstallLdifFile=suggest slapd.RootDN=\"${root_dn}\" slapd.RootDNPwd=\"${root_dn_pass}\" slapd.SlapdConfigForMC=yes slapd.ServerIdentifier=${instance} slapd.AddOrgEntries=yes slapd.ServerPort=${server_port} slapd.Suffix=${suffix} admin.SysUser=${suite_spot_user_id} General.ConfigDirectoryAdminID=admin General.ConfigDirectoryAdminPwd=\"${root_dn_pass}\" admin.ServerAdminID=admin admin.ServerAdminPwd=\"${root_dn_pass}\" admin.ServerIpAddress=${net::backend::ip} admin.Port=9830 General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=NetscapeRoot\"",    
-    require => [ Package['389-ds-base'] ],
-    creates  => "${database}",
+    command   => "/usr/sbin/setup-ds-admin.pl --silent General.FullMachineName=${instance_hostname} General.SuiteSpotGroup=${suite_spot_group} General.SuiteSpotUserID=${suite_spot_user_id} slapd.InstallLdifFile=suggest slapd.RootDN=\"${root_dn}\" slapd.RootDNPwd=\"${root_dn_pass}\" slapd.SlapdConfigForMC=yes slapd.ServerIdentifier=${instance} slapd.AddOrgEntries=yes slapd.ServerPort=${server_port} slapd.Suffix=${suffix} admin.SysUser=${suite_spot_user_id} General.ConfigDirectoryAdminID=admin General.ConfigDirectoryAdminPwd=\"${root_dn_pass}\" admin.ServerAdminID=admin admin.ServerAdminPwd=\"${root_dn_pass}\" admin.ServerIpAddress=${net::backend::ip} admin.Port=9830 General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=NetscapeRoot\"",    
+    require   => [ Package['389-ds-base'] ],
+    creates   => "${database}",
+    tag       => "ds389-setup",
     logoutput => false
-  } ->
-
-  # required if the NSS database has a password to access
-  #exec { "${instance} setup token":
-  #  command => "${stop} ;/bin/echo \"Internal (Software) Token:${root_dn_pass}\" > ${database}/pin.txt ;chown -R ${suite_spot_user_id}:${suite_spot_group} ${database}*  ;${start}",
-  #  creates  => "${database}/pin.txt",
-  #} ->
-
-  # -W is the PKCS12 password, -K is keystore password.    
-  # if we don't stop the instance before doing this the import ends up corrupted and doesn't work
-  exec { "${instance} import key and certificate":
-    command => "${stop} ; /bin/pk12util -i $certfile -d ${database} -W \"$certpass\" -K \"$kspass\" ",
-    unless  => [ "/bin/certutil -L -d ${database} | /bin/grep -q \"${certname}\"", "/usr/bin/test ! -f $certfile" ],
-    logoutput => false
-  } -> 
-
-  exec { "${instance} import CA chain":
-    command => "/bin/certutil -d ${database} -A -n $caname -t CT,, -a -i $cafile; ${start}",
-    unless  => [ "/bin/certutil -d ${database} -L | /bin/grep -q \"${caname}\"" , "/usr/bin/test ! -f $cafile" ],
-    # logoutput => true
   } ->
   
   service { "dirsrv@${instance}":
       ensure => $ds389::service_running,
       enable => $ds389::service_enable
-  } ->
-
-  anchor { "${instance} ds389::site::end": }
-
-###### add a tag to these so you can group the dependencies with a collector, duh!  And do it to the stuff above as well!
-
-  $ldif_install.each | $ldif | {
-    file { "$instance $ldif":
-      require => Exec["${instance} import CA chain"],
-      path => "${database}/${ldif}",
-      content => template("$ldif_src/${ldif}.erb")
-    } ~>
-    exec { "${instance} ldif import ${ldif}" :
-      command => "/bin/cat ${database}/${ldif} |${ldapmodify} -v -x -D \"${root_dn}\" -w ${root_dn_pass} ; if [ $? -eq 0 ]; then touch ${database}/${ldif}.done; fi",
-      creates => "${database}/${ldif}.done",
-      notify  => Service["dirsrv@${instance}"],
-      logoutput => false
-    }
   }
 
-
+  Exec["${instance}-ds389-setup"] ->  Exec <|tag == 'ds389-init' |>  -> File <| tag == 'ds389-ldif' |> 
 
   $schema_install.each | $schema | {
+    ds389::schema { "$schema":  instance => $instance }
+  }
 
-    exec { "${instance}-stop-install-${schema}":
-      command => "${stop}", 
-      creates => "${database}/schema/${schema}",
-      require => Service["dirsrv@${instance}"] 
-    } ->
+  if $enable_ssl {
+    # -W is the PKCS12 password, -K is keystore password.    
+    # if we don't stop the instance before doing this the import ends up corrupted and doesn't work
+    exec { "${instance} import key and certificate":
+      command => "${stop} ; /bin/pk12util -i $certfile -d ${database} -W \"$certpass\" -K \"$kspass\" ",
+      unless  => [ "/bin/certutil -L -d ${database} | /bin/grep -q \"${certname}\"", "/usr/bin/test ! -f $certfile" ],
+      tag => 'ds389-init',
+      logoutput => false
+    } -> 
 
-    file { "$instance $schema":
-      path => "${database}/schema/${schema}",
-      content => file("$schema_src/$schema")
+    exec { "${instance} import CA chain":
+      command => "/bin/certutil -d ${database} -A -n $caname -t CT,, -a -i $cafile; ",
+      unless  => [ "/bin/certutil -d ${database} -L | /bin/grep -q \"${caname}\"" , "/usr/bin/test ! -f $cafile" ],
+      notify  => Service["dirsrv@${instance}"] 
+    } 
 
-    } ~>
-
-    exec { "${instance}-start-install-${schema}":
-      command => "${start}",
-      refreshonly => true
+    if ($kspass != '') {
+      exec { "${instance} setup token":
+        command  => "${stop} ;/bin/echo \"Internal (Software) Token:${kspass}\" > ${database}/pin.txt ;chown -R ${suite_spot_user_id}:${suite_spot_group} ${database}*  ;${start}",
+        creates  => "${database}/pin.txt",
+        tag      => 'ds389-init',
+        notify   => Service["dirsrv@${instance}"]  
+      }
     }
 
+    ds389::ldif { 'ssl.ldif':
+      instance     => $instance,
+      root_dn_pass => $root_dn_pass,
+      root_dn      => $root_dn,
+      template_vars => {       # it seems dumb that I have to do this, but that's scoping for you
+        certname => $certname 
+      }
+    }
   }
-    # doing these inline because passwords are involved that I don't want to save to a file on the system
+
+  if $enable_replication {
+    ds389::ldif { 'replication.ldif':
+      instance      => $instance,
+      root_dn_pass  => $root_dn_pass,
+      root_dn       => $root_dn,
+      template_vars => {
+        instance       => $instance,
+        replica_id     => $replica_id,
+        suffix         => $suffix,
+        escaped_suffix => $escaped_suffix,
+      }
+    }
+  }
+
+  # doing these inline because passwords are involved that I don't want to save to a file on the system
 
   if $supplier_bind_dn_pass {
 
@@ -140,15 +137,12 @@ define ds389::site (
       nsIdleTimeout: 0
       |-EOT
 
-      exec { "${instance} supplier bind DN" :
-        command => "/bin/echo \"${repl_bind_ldif}\" | ${ldapmodify} -v -x -D \"${root_dn}\" -w ${root_dn_pass} ; if [ $? -eq 0 ]; then touch ${database}/supplier_bind_dn.done; fi",
-        creates => "${database}/supplier_bind_dn.done",
-        notify  => Service["dirsrv@${instance}"],
-        require => Exec["${instance} setup ds"],
-        logoutput => false
-    }
-
-     # generate replication agreements 
+      ds389::ldif { 'supplier_bind_dn': 
+        instance     => $instance,
+        root_dn_pass => $root_dn_pass,
+        root_dn      => $root_dn,
+        ldif         => $repl_bind_ldif
+      }
 
     $replicas.each | $replica | {
       $repl_ldif = @("EOT")
@@ -170,12 +164,11 @@ define ds389::site (
       nsds5BeginReplicaRefresh: ${start_replica}
       |-EOT
 
-      exec { "${instance} $replica replica agreement" :
-        command => "/bin/echo \"${repl_ldif}\" | ${ldapmodify} -v -x -D \"${root_dn}\" -w ${root_dn_pass} ; if [ $? -eq 0 ]; then touch ${database}/repl_agr_${replica}.done; fi",
-        creates => "${database}/repl_agr_${replica}.done",
-        notify  => Service["dirsrv@${instance}"],
-        require => [ Exec["${instance} setup ds"], Exec["${instance} ldif import replication.ldif"] ],
-        logoutput => false
+      ds389::ldif { "${replica}-agreement": 
+        instance     => $instance,
+        root_dn_pass => $root_dn_pass,
+        root_dn      => $root_dn,
+        ldif         => $repl_ldif
       }
     }
   }

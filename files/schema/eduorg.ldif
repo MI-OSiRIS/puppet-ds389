@@ -1,16 +1,5 @@
-#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#
-# THIS SCHEMA FILE COMPILED FROM OpenLDAP FORMATTED SCHEMAS.  DO NOT HAND     #
-# EDIT THIS FILE, DOWNLOAD THE CORRESPONDING SCHEMA FILE FROM GITHUB FOLDER   #
-# https://github.com/MI-OSiRIS/aa_services/tree/master/doc/schema/ldap        #
-# MAKE YOUR EDITS, AND "COMPILE" TO "ldif" USING THE TOOL AVAILABLE AT        #
-# https://github.com/MI-OSiRIS/aa_services/blob/master/bin/os2ns.pl           #
-#                                                                             #
-# THIS FILE WAS COMPILED AT Wed Feb 22 15:03:50 2017 WITH THE INVOCATION:     #
-#                                                                             #
-# os2ns.pl eduorg.schema 65eduorg.ldif                                        #
-#                                                                             #
-#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#+#
-#
+# Sourced from https://github.com/MI-OSiRIS/aa_services/blob/fixtures/data/schema/ldap/ns-slapd/ldif/65eduorg.ldif
+# 
 dn: cn=schema
 objectClass: top
 objectClass: ldapSubentry

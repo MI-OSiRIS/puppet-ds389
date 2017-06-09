@@ -3,17 +3,17 @@ changetype: add
 objectclass: top
 objectclass: extensibleObject
 cn: changelog5
-nsslapd-changelogdir: /var/lib/dirsrv/slapd-<%=@instance%>/changelogdb
+nsslapd-changelogdir: /var/lib/dirsrv/slapd-<%=@template_vars['instance']%>/changelogdb
 nsslapd-changelogmaxage: 10d
 
-dn: cn=replica,cn=<%=@escaped_suffix%>,cn=mapping tree,cn=config
+dn: cn=replica,cn=<%=@template_vars['escaped_suffix']%>,cn=mapping tree,cn=config
 changetype: add
 objectclass: top
 objectclass: nsds5replica
 objectclass: extensibleObject
 cn: replica
-nsds5replicaroot: <%=@suffix%>
-nsds5replicaid: <%=@replica_id%>
+nsds5replicaroot: <%=@template_vars['suffix']%>
+nsds5replicaid: <%=@template_vars['replica_id']%>
 nsds5replicatype: 3
 nsds5flags: 1
 nsds5ReplicaPurgeDelay: 604800
