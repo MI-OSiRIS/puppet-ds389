@@ -1,5 +1,6 @@
 # this doesn't really behave right when the ldif param is used to provide inline ldif - there's no file change to trigger re-run of the exec
-# the force_update param is a hack to force re-run of the ldapmodify command in this case
+# The module looks for an $::ldif_force_update fact which will force these inline ldifs to run again.  
+# For example: FACTER_ldif_force_update='true' puppet agent -t
 
 define ds389::ldif (
 	$instance,
@@ -8,18 +9,17 @@ define ds389::ldif (
 	$root_dn,
 	$ldif_file     = "${name}",  # not fed to ldapmodify if $ldif text is provided directly, but still used as unique identifier 
 	$ldif          = undef,
-	$force_update  = false,
 	$template_vars = undef
 ) {
 
 	$database    = "/etc/dirsrv/slapd-${instance}"
 	$ldapmodify  = $::ds389::ldapmodify
 
-	if $force_update {
-		file { "$instance-$ldif_file":
-      		path    => "${database}/${ldif_file}",
+	if $::ldif_force_update {
+		file { "$instance-${ldif_file}.done":
+      		path    => "${database}/${ldif_file}.done",
       		ensure  => absent,
-      		before  => Exec["ldapmodify-${instance}-${ldif_file}"]
+      		before  => File["$instance-$ldif_file"]
       	}
 	}
 
