@@ -19,7 +19,7 @@ class ds389 (
 		$snmp_service_running = false
 	}
 
-	package { ['389-ds-base', '389-ds-base-libs', '389-ds-base-snmp', '389-admin-console', '389-ds-console']:
+	package { ['389-ds-base', '389-ds-base-libs', '389-ds-base-snmp']:
     	ensure => $ensure,
   	} -> 
   	

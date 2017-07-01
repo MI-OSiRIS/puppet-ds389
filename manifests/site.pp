@@ -52,17 +52,19 @@ define ds389::site (
   else { $start_replica = 'no' }
 
   $common_args = "--silent General.FullMachineName=${instance_hostname} General.SuiteSpotGroup=${suite_spot_group} \
-General.SuiteSpotUserID=${suite_spot_user_id} slapd.InstallLdifFile=none slapd.RootDN=\"${root_dn}\" \
-slapd.RootDNPwd=\"${root_dn_pass}\" slapd.ServerIdentifier=${instance} slapd.AddOrgEntries=no \
+General.SuiteSpotUserID=${suite_spot_user_id} slapd.InstallLdifFile=suggest slapd.RootDN=\"${root_dn}\" \
+slapd.RootDNPwd=\"${root_dn_pass}\" slapd.ServerIdentifier=${instance} slapd.AddOrgEntries=no slapd.SlapdConfigForMC=no \
 slapd.ServerPort=${server_port} slapd.Suffix=${suffix}"    
 
 
-  if ($admin_server) {
+  if ($enable_admin_console) {
+    
+    ensure_packages(['389-admin-console', '389-ds-console'], {'ensure' => 'present'})
 
-    $admin_args = "slapd.SlapdConfigForMC=yes admin.SysUser=${suite_spot_user_id} General.ConfigDirectoryAdminID=admin \
+    $admin_args = "admin.SysUser=${suite_spot_user_id} General.ConfigDirectoryAdminID=admin \
 General.ConfigDirectoryAdminPwd=\"${root_dn_pass}\" admin.ServerAdminID=admin admin.ServerAdminPwd=\"${root_dn_pass}\" \
 admin.ServerIpAddress=${net::backend::ip} admin.Port=9830 \
-General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=NetscapeRoot\""
+slapd.SlapdConfigForMC=yes General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=NetscapeRoot\" "
 
     $command = "/usr/sbin/setup-ds-admin.pl $common_args $admin_args"
   } else {
@@ -70,9 +72,7 @@ General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=Ne
   }
 
   exec { "${instance}-ds389-setup":
-    # the second version also configures an admin server on 9830.  Could be useful to have available.  
-    # command => "/usr/sbin/setup-ds.pl --silent General.FullMachineName=${instance_hostname} General.SuiteSpotGroup=${suite_spot_group} General.SuiteSpotUserID=${suite_spot_user_id} slapd.InstallLdifFile=suggest slapd.RootDN=\"${root_dn}\" slapd.RootDNPwd=\"${root_dn_pass}\" slapd.ServerIdentifier=${instance} slapd.AddOrgEntries=yes slapd.ServerPort=${server_port} slapd.Suffix=${suffix}",    
-    command   => "/usr/sbin/setup-ds-admin.pl --silent General.FullMachineName=${instance_hostname} General.SuiteSpotGroup=${suite_spot_group} General.SuiteSpotUserID=${suite_spot_user_id} slapd.InstallLdifFile=suggest slapd.RootDN=\"${root_dn}\" slapd.RootDNPwd=\"${root_dn_pass}\" slapd.SlapdConfigForMC=yes slapd.ServerIdentifier=${instance} slapd.AddOrgEntries=yes slapd.ServerPort=${server_port} slapd.Suffix=${suffix} admin.SysUser=${suite_spot_user_id} General.ConfigDirectoryAdminID=admin General.ConfigDirectoryAdminPwd=\"${root_dn_pass}\" admin.ServerAdminID=admin admin.ServerAdminPwd=\"${root_dn_pass}\" admin.ServerIpAddress=${net::backend::ip} admin.Port=9830 General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=NetscapeRoot\"",    
+    command   => $command,
     require   => [ Package['389-ds-base'] ],
     creates   => "${database}",
     tag       => "ds389-setup",
@@ -84,8 +84,15 @@ General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=Ne
       enable => $ds389::service_enable
   }
 
-  Exec["${instance}-ds389-setup"] ->  Exec <|tag == 'ds389-init' |>  -> File <| tag == 'ds389-ldif' |> 
+  Exec["${instance}-ds389-setup"] -> Exec <|tag == 'ds389-init' |>  -> File <| tag == 'ds389-ldif' |> -> Exec <| tag == 'ds389-ldif' |>
+  Service["dirsrv@${instance}"] -> Exec["${instance}-post-config-restart"]
+  Exec <| tag == 'ds389-supplier-dn' |> -> Exec <| tag == 'ds389-supplier-agreement' |>
 
+  exec { "${instance}-post-config-restart": 
+    command => "${stop}; ${start}",
+    refreshonly => true
+  }
+  
   $schema_install.each | $schema | {
     ds389::schema { "$schema":  instance => $instance }
   }
@@ -103,15 +110,13 @@ General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=Ne
     exec { "${instance} import CA chain":
       command => "/bin/certutil -d ${database} -A -n $caname -t CT,, -a -i $cafile; ",
       unless  => [ "/bin/certutil -d ${database} -L | /bin/grep -q \"${caname}\"" , "/usr/bin/test ! -f $cafile" ],
-      notify  => Service["dirsrv@${instance}"] 
     } 
 
     if ($kspass != '') {
       exec { "${instance} setup token":
-        command  => "${stop} ;/bin/echo \"Internal (Software) Token:${kspass}\" > ${database}/pin.txt ;chown -R ${suite_spot_user_id}:${suite_spot_group} ${database}*  ;${start}",
+        command  => "${stop}; /bin/echo \"Internal (Software) Token:${kspass}\" > ${database}/pin.txt ;chown -R ${suite_spot_user_id}:${suite_spot_group} ${database}*  ;${start}",
         creates  => "${database}/pin.txt",
         tag      => 'ds389-init',
-        notify   => Service["dirsrv@${instance}"]  
       }
     }
 
@@ -121,7 +126,8 @@ General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=Ne
       root_dn      => $root_dn,
       template_vars => {       # it seems dumb that I have to do this, but that's scoping for you
         certname => $certname 
-      }
+      },
+      notify => Exec["${instance}-post-config-restart"]
     }
   }
 
@@ -135,7 +141,8 @@ General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=Ne
         replica_id     => $replica_id,
         suffix         => $suffix,
         escaped_suffix => $escaped_suffix,
-      }
+      },
+      notify => Exec["${instance}-post-config-restart"]
     }
   }
 
@@ -160,7 +167,8 @@ General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=Ne
         instance     => $instance,
         root_dn_pass => $root_dn_pass,
         root_dn      => $root_dn,
-        ldif         => $repl_bind_ldif
+        ldif         => $repl_bind_ldif,
+        taglist      => [ 'ds389-supplier-dn', 'ds389-ldif' ],
       }
 
     $replicas.each | $replica | {
@@ -187,7 +195,9 @@ General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=Ne
         instance     => $instance,
         root_dn_pass => $root_dn_pass,
         root_dn      => $root_dn,
-        ldif         => $repl_ldif
+        ldif         => $repl_ldif,
+        taglist      => [ 'ds389-supplier-agreement', 'ds389-ldif' ],
+        require      => Exec["${instance}-post-config-restart"]
       }
     }
   }

@@ -9,7 +9,8 @@ define ds389::ldif (
 	$root_dn,
 	$ldif_file     = "${name}",  # not fed to ldapmodify if $ldif text is provided directly, but still used as unique identifier 
 	$ldif          = undef,
-	$template_vars = undef
+	$template_vars = undef,
+	$taglist        = [ 'ds389-ldif' ]  # override default exec tag to enable alternate resource ordering (a requirement for some setup tasks using this resource)
 ) {
 
 	$database    = "/etc/dirsrv/slapd-${instance}"
@@ -31,13 +32,14 @@ define ds389::ldif (
 		file { "$instance-$ldif_file":
       		path    => "${database}/${ldif_file}",
       		content => template("${template_path}/${ldif_file}.erb"),
-      		tag     => 'ds389-ldif',
-      		notify  => Exec["ldapmodify-${instance}-${ldif_file}"]
+      		notify  => Exec["ldapmodify-${instance}-${ldif_file}"],
+      		tag     => $taglist
       	}
 	}
     
     exec { "ldapmodify-${instance}-${ldif_file}" :
       command => "${command} | ${ldapmodify} -v -x -D \"${root_dn}\" -w ${root_dn_pass} ; if [ $? -eq 0 ]; then touch ${database}/${ldif_file}.done; fi",
-      creates => "${database}/${ldif_file}.done"
+      creates => "${database}/${ldif_file}.done",
+      tag     => $taglist
     } 
 }
