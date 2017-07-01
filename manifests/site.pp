@@ -20,6 +20,7 @@ define ds389::site (
   $caname                = 'CA1', # identifier to use for imported CA.  No spaces, space and everything after is ignored.
   $enable_ssl            = true,
   $enable_replication    = false,
+  $enable_admin_console  = false,   # init with setup-ds-admin.pl to configure admin console
   $schema_install        = [ 'eduorg.ldif' ], # array of ldif schema extensions to install from those included with module
   $supplier_bind_dn_pass = undef, # if left undef a supplier bind dn is not created
   $supplier_bind_dn      = 'cn=replication manager, cn=config', 
@@ -49,6 +50,24 @@ define ds389::site (
   # values other than start are ignored
   if $replica_init { $start_replica = 'start' } 
   else { $start_replica = 'no' }
+
+  $common_args = "--silent General.FullMachineName=${instance_hostname} General.SuiteSpotGroup=${suite_spot_group} \
+General.SuiteSpotUserID=${suite_spot_user_id} slapd.InstallLdifFile=none slapd.RootDN=\"${root_dn}\" \
+slapd.RootDNPwd=\"${root_dn_pass}\" slapd.ServerIdentifier=${instance} slapd.AddOrgEntries=no \
+slapd.ServerPort=${server_port} slapd.Suffix=${suffix}"    
+
+
+  if ($admin_server) {
+
+    $admin_args = "slapd.SlapdConfigForMC=yes admin.SysUser=${suite_spot_user_id} General.ConfigDirectoryAdminID=admin \
+General.ConfigDirectoryAdminPwd=\"${root_dn_pass}\" admin.ServerAdminID=admin admin.ServerAdminPwd=\"${root_dn_pass}\" \
+admin.ServerIpAddress=${net::backend::ip} admin.Port=9830 \
+General.ConfigDirectoryLdapURL=\"ldap://${instance_hostname}:${server_port}/o=NetscapeRoot\""
+
+    $command = "/usr/sbin/setup-ds-admin.pl $common_args $admin_args"
+  } else {
+    $command =  "/usr/sbin/setup-ds.pl $common_args"
+  }
 
   exec { "${instance}-ds389-setup":
     # the second version also configures an admin server on 9830.  Could be useful to have available.  
