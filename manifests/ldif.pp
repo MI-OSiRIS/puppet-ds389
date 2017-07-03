@@ -6,7 +6,7 @@ define ds389::ldif (
 	$instance,
 	$template_path = 'ds389/ldif',
 	$root_dn_pass,
-	$root_dn,
+	$root_dn       = 'cn=Directory Manager',
 	$ldif_file     = "${name}",  # not fed to ldapmodify if $ldif text is provided directly, but still used as unique identifier 
 	$ldif          = undef,
 	$template_vars = undef,
