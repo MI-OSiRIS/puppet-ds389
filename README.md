@@ -29,9 +29,9 @@ $supplier_dn_pass = 'another_password'
     enable_ssl             => true,
     enable_replication     => true,
     schema_install         => [ 'eduorg.ldif' ],
-    instance_hostname      => "${::hostname}",
+    instance_hostname      => "${::fqdn}",
     # delete myself from replicas defined on myself
-    replicas               => delete($replicas, "${::hostname}"),
+    replicas               => delete($replicas, "${::fqdn}"),
     replica_id             => 1,
     replica_init           => false  # only true on 1 of your replicas, run puppet on that one last 
   }
