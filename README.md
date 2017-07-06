@@ -64,7 +64,7 @@ ldapsearch -x -b "cn=mapping tree,cn=config" -D "cn=Directory Manager" -W object
 
 If something goes wrong, or you choose not to initialize during puppet setup (replica_init false on all 3 hosts) you can initialize manually from any ONE of the replicas. Choose one host and initialize the others from it…do not repeat the initialization on the other hosts. The example below intializes one replica, repeat ldif with other ldap replica(s).
 
-You can also leave the setting false, set up all the hosts, and initialize the agreements with ldapmodify input similar to the following.  Either run ldapmodify and paste in the block followed by hitting enter twice, pipe it to ldap modify from a file, or specify the file to use with '-f file.ldif'.
+Either run ldapmodify and paste in the block followed by hitting enter twice, pipe it to ldap modify from a file, or specify the file to use with '-f file.ldif':
 
 <pre>
 ldapmodify -v -x -D "root_dn" -w root_dn_pass
