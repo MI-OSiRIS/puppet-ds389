@@ -1,0 +1,19 @@
+# This file originated with the openssh-ldap-6.6.1p1-35.el7_3 package included in RHEL-7 derivatives (openssh-lpk-sun.ldif)
+#
+# LDAP Public Key Patch schema for use with openssh-ldappubkey
+#                              useful with PKA-LDAP also
+#
+# Author: Eric AUGE <eau@phear.org>
+#
+# LDIF for Sun Directory Server.
+# Based on the original schema, modified by Jakub Jelen.
+#
+dn: cn=schema
+attributeTypes: ( 1.3.6.1.4.1.24552.500.1.1.1.13
+  NAME 'sshPublicKey' DESC 'MANDATORY: OpenSSH Public key'
+  EQUALITY octetStringMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.40 )
+objectClasses: ( 1.3.6.1.4.1.24552.500.1.1.2.0
+  NAME 'ldapPublicKey' DESC 'MANDATORY: OpenSSH LPK objectclass'
+  SUP top AUXILIARY MUST ( sshPublicKey $ uid ) )
+
+

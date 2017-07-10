@@ -21,7 +21,7 @@ define ds389::site (
   $enable_ssl            = true,
   $enable_replication    = false,
   $enable_admin_console  = false,   # init with setup-ds-admin.pl to configure admin console
-  $schema_install        = [ 'eduorg.ldif' ], # array of ldif schema extensions to install from those included with module
+  $schema_install        = [ 'eduorg.ldif', 'sshlpk.ldif' ], # array of ldif schema extensions to install from those included with module
   $supplier_bind_dn_pass = undef, # if left undef a supplier bind dn is not created
   $supplier_bind_dn      = 'cn=replication manager, cn=config', 
   $supplier_bind_cn      = 'replication manager', # should match cn for supplier_bind_dn
