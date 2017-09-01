@@ -4,15 +4,15 @@ define ds389::client (
 	$manage_openldap = true
 ) {
 
-	if $manage_openldap { 
-		package { 'openldap': 
+	if $manage_openldap {
+		package { 'openldap':
 			ensure => present,
 			before => File['/etc/openldap/cacerts']
-		} 
+		}
 	}
 
 	if ! defined(File['/etc/openldap/cacerts']) {
-		file { '/etc/openldap/cacerts': 
+		file { '/etc/openldap/cacerts':
   			ensure => directory
   		}
   	}
@@ -24,8 +24,8 @@ define ds389::client (
   	} ~>
 
   	exec { "$ca_name - rehash openldap CA certs":
-    	command => '/sbin/cacertdir_rehash /etc/openldap/cacerts',
+    	command => '/usr/sbin/cacertdir_rehash /etc/openldap/cacerts',
     	refreshonly => true
   	}
 }
-  	
+
