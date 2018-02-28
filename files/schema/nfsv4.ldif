@@ -1,8 +1,6 @@
-# Source: http://www.citi.umich.edu/projects/nfsv4/ldap/
-# Schema file compiled from OpenLDAP formatted file using os2ns.pl
-# 
-# Compiled Wed Feb 28 14:45:03 2018     
-# 
+# Source: http://www.citi.umich.edu/projects/nfsv4/ldap/ (2018-02-28)
+# Converted with https://github.com/MI-OSiRIS/puppet-ds389/blob/master/files/tools/os2ns.pl
+#     
 # Changes from original source:
 # 2018-02-28: Modified OID for NFSv4RemotePerson to 1.3.6.1.4.1.250.1.64 due to conflict with 'ttl' attribute type using .60
 #                                                                             
