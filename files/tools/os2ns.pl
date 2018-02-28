@@ -128,7 +128,7 @@ open my $ofh, '>', $outfile or die "Can't write to $outfile - $!\n";
 
 print $ofh <<"EOF";
 # Schema file compiled from OpenLDAP formatted file using os2ns.pl
-# <url>
+# https://github.com/MI-OSiRIS/puppet-ds389/blob/master/files/tools/os2ns.pl
 # Compiled @{[scalar localtime]}      
 
 EOF
