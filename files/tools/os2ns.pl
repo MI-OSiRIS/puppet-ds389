@@ -130,7 +130,7 @@ print $ofh <<"EOF";
 # Schema file compiled from OpenLDAP formatted file using os2ns.pl
 # https://github.com/MI-OSiRIS/puppet-ds389/blob/master/files/tools/os2ns.pl
 # Compiled @{[scalar localtime]}      
-
+#
 EOF
 
 print $ofh "dn: cn=schema\n";
