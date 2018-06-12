@@ -1,4 +1,5 @@
-# installs a CA certificate
+# installs a CA client certificate for openldap and rehashes certdir
+# slightly outside the scope of this module but useful utility
 # must define only one of the following:
 # ca_cert_path can be a local filesystem path or puppet URI
 # ca_cert_contents can be a string
@@ -6,10 +7,13 @@
 define ds389::ca (
     $ca_cert_path = undef,
     $ca_cert_contents = undef,
+    $cacertdir = '/etc/openldap/cacerts',
     $ca_name = "$name",
 ) {
 
-  $cacertdir = $ds389::client::openldap_cacertdir
+  file { "${cacertdir}": 
+    ensure => present
+  } ->
 
   file { "$ca_name - add CA cert to openldap":
     path => "${cacertdir}/${ca_name}-ca.pem",
