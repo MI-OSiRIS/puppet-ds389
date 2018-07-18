@@ -12,7 +12,7 @@ define ds389::ca (
 ) {
 
   file { "${cacertdir}": 
-    ensure => present
+    ensure => directory
   } ->
 
   file { "$ca_name - add CA cert to openldap":
