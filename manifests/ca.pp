@@ -22,8 +22,10 @@ define ds389::ca (
     require => File["$cacertdir"]
   } ~>
 
+  # cacertdir_rehash (authconfig) only exists on EL7 and older; EL8+ have
+  # OpenSSL >= 1.1, whose "openssl rehash" builds the same hash links.
   exec { "$ca_name - rehash openldap CA certs":
-    command => "/usr/sbin/cacertdir_rehash $cacertdir",
+    command => "/bin/sh -c 'if [ -x /usr/sbin/cacertdir_rehash ]; then /usr/sbin/cacertdir_rehash ${cacertdir}; else /usr/bin/openssl rehash ${cacertdir}; fi'",
     refreshonly => true
   }
 }
